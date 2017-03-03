@@ -1,6 +1,7 @@
 package dbms;
 
 import java.io.DataOutputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
@@ -13,42 +14,45 @@ public class Main {
         if (args.length == 1) {
             portNumber = Integer.parseInt(args[0]);
         }
-        makeRecord();
         Server server = new Server(portNumber);
+
         server.start();
+//        writeTestBinaryFile();
     }
 
-    public static void makeRecord() throws IOException {
-        DataOutputStream writer =
-                new DataOutputStream(new FileOutputStream(String.format("%1$s/data.data", Consts.SCHEMA_ROOT_PATH)));
+    public static void writeTestBinaryFile() throws FileNotFoundException, IOException {
+        DataOutputStream os =
+                new DataOutputStream(new FileOutputStream(String.format("%1$s/aaa.data", Consts.SCHEMA_ROOT_PATH)));
+        String metaFileName = "aaa";
+        writeString(metaFileName, os, 20); // 20 bytes
 
-        String metaFileName = "data";
-        writeString(metaFileName, writer, 20);
         String nextPageFileName = "";
-        writeString(nextPageFileName, writer, 20);
-        writer.writeInt(4096);
-        writer.writeInt(0);
-        for (int i = 0; i < 63; ++i) {
-            writer.writeInt(0);
+        writeString(nextPageFileName, os, 20); // 20 bytes
+
+        os.writeInt(4096); // next page start byte, 4 bytes
+
+        // 256 bytes for pointers, max 64 entities in the block
+        int numOfEntities = 0;
+
+        for (int i = 0; i < 63 - numOfEntities; ++i) { // write 244 empty bytes
+            os.writeInt(2);
         }
-        newRecord(123, "123", (int) (System.currentTimeMillis() / 1000L), writer);
-        for (int i = 0; i < 3778; ++i) {
-            writer.writeByte(0);
-        }
-        writer.close();
+        os.writeInt(0);
+
+        for(int i =0;i<3796;++i) os.writeByte(0);  // offset
+
+        os.close();
     }
 
-    private static void writeString(String str, DataOutputStream writer, int max) throws IOException {
-        int res = max - str.length() * 2;
-        for (int i = 0; i < res; ++i) {
-            writer.writeByte(0);
-        }
-        writer.writeChars(str);
+    private static void writeString(String name, DataOutputStream os, int maxBytes) throws IOException{
+        int shortage = maxBytes - name.length() * 2;
+        for (int i = 0; i < shortage; ++i) os.writeByte(0);
+        os.writeChars(name);
     }
 
-    private static void newRecord(int id, String str, int time, DataOutputStream writer) throws IOException {
-        writer.writeInt(id);
-        writeString(str, writer, 10);
-        writer.writeInt(time);
+    private static void writeEntity(int id, String name, int timestamp, DataOutputStream os) throws IOException {
+        os.writeInt(id);
+        writeString(name, os, 10);
+        os.writeInt(timestamp);
     }
 }

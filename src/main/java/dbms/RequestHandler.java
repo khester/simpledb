@@ -22,7 +22,9 @@ public class RequestHandler {
             String userResponse;
 
             CommandManager commandManager;
-            SchemaManager schemaManager = new SchemaManager();
+
+            SchemaManager schemaManager = new SchemaManager(); //error nullpointerexception here
+
             QueryManager queryManager = new QueryManager();
             queryManager.executeCommand("fullscan");
 

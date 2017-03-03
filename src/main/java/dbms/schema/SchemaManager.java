@@ -9,7 +9,9 @@ public class SchemaManager {
     private String shemaRoot;
 
     public SchemaManager() {
+
         BufferManager.getInstance().loadSchemas();
+
         this.shemaRoot = Consts.SCHEMA_ROOT_PATH;
     }
 

@@ -17,6 +17,8 @@ public class DiskManager {
         return instance;
     }
 
+
+    //Page - 4096
     Page getPage(String pageId) throws IOException {
         // pageID: "fileName:startByte"
 
@@ -31,7 +33,9 @@ public class DiskManager {
         return new Page(result);
     }
 
+    // load all schemas in the disk
     Map<String, Schema> loadrelationTable() {
+
         Map<String, Schema> schemaMap = new HashMap<>();
         for (String fileName: this.getAllSchemaFilePaths()) {
             String[] column;
