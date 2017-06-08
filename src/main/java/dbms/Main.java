@@ -14,10 +14,11 @@ public class Main {
         if (args.length == 1) {
             portNumber = Integer.parseInt(args[0]);
         }
+        //writeTestBinaryFile();
+
         Server server = new Server(portNumber);
 
         server.start();
-//        writeTestBinaryFile();
     }
 
     public static void writeTestBinaryFile() throws FileNotFoundException, IOException {

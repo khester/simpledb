@@ -1,6 +1,7 @@
 package dbms.storage;
 
 import dbms.Consts;
+import dbms.index.BTree;
 import dbms.query.QueryPlan;
 import dbms.query.QueryResult;
 import dbms.schema.Column;
@@ -16,8 +17,10 @@ import java.nio.ByteBuffer;
 public class BufferManager {
     private static final BufferManager instance = new BufferManager();
     private HashMap<String, Page> bufferTable = new HashMap<>();
+
     private DiskManager diskManager = DiskManager.getInstance();
     private Map<String, Schema> schemas;
+
     public static BufferManager getInstance() {
         return instance;
     }
@@ -35,7 +38,6 @@ public class BufferManager {
 
     public QueryResult executeQuery(QueryPlan queryPlan) throws IOException {
         //queryPlan
-
         QueryResult queryResult = new QueryResult();
         String pageID = "aaa:0";
         //fullscan
@@ -86,11 +88,16 @@ public class BufferManager {
 
         if (isBuffered(pageID)) {
             Page page = bufferTable.get(pageID);
-            ArrayList<String> tuples = new ArrayList<>();
-            tuples.add("987654");
-            tuples.add("roman");
-            tuples.add(Long.toString(System.currentTimeMillis() / 1000L));
-            Page dsa = makeRecord(page,tuples);
+            Page dsa = page;
+            for (int i = 1; i < 10; ++i) {
+                ArrayList<String> tuples = new ArrayList<>();
+                tuples.add(Integer.toString(i));
+                tuples.add("roman");
+                tuples.add(Long.toString(System.currentTimeMillis() / 1000L));
+                dsa = makeRecord(dsa, tuples);
+            }
+            makeIndex("dsa","aaa:0","id");
+
 
             queryResult.addResults(getRows(dsa));
             queryResult.setSchema(getSchema(dsa.getRelationName()));
@@ -99,7 +106,7 @@ public class BufferManager {
         }
 
 
-            return queryResult;
+        return queryResult;
     }
 
     //read data from page and return arraylist of rows
@@ -120,9 +127,6 @@ public class BufferManager {
                         for (int j = 0; j < column.getSize() / 2; ++j) {
                             col[j] = wrapped.getChar(beginPointer);
                             beginPointer += 3;
-                            System.out.print(col[j]);
-                            System.out.println(" <- ITS A COLUMN");
-
                         }
 
                         values.add(String.valueOf(col).trim());
@@ -146,6 +150,44 @@ public class BufferManager {
         return rows;
     }
 
+    public void makeIndex(String nameOfIndex, String TableName, String ColumnName ) throws IOException {
+
+        String pageId = TableName;
+        BTree<String, String> currentBTree = new BTree<>();
+
+        while (true) {
+
+            if (isBuffered(pageId)) {
+
+                Page currentPage = bufferTable.get(pageId);
+                Schema currentSchema = getSchema(currentPage.getRelationName());
+                int columnNumber = 0;
+                int index = 0;
+
+                for (Column column : currentSchema.getColumns()) { //get index of column in schema for
+
+                    if (column.getName() == ColumnName) {
+                        columnNumber = index;
+                    }
+                    index++;
+                }
+                ArrayList<Row> currentRows = getRows(currentPage);
+                for (int i = 0; i < currentRows.size(); ++i) {
+                    String newCol = currentRows.get(i).getData().get(columnNumber); // get needeble column from row and save value into newCol
+                    int curRecordPosition = currentPage.getPointers().get(i);
+                    currentBTree.put(newCol, pageId + ":" + curRecordPosition);//insert key value(in format table_name : tuple position) from current row into BTREE
+                }
+                if (currentPage.getNextPageName().isEmpty()) {
+                    break;
+                }
+                pageId = String.format("%1$s:%2$d", currentPage.getNextPageName(), currentPage.getNextPageByte());
+            } else {
+                bufferPage(pageId);
+            }
+
+        }
+        System.out.println(currentBTree.toString());
+    }
 
 
     public Page makeRecord(Page page, ArrayList<String> newTuple) throws IOException {
@@ -157,12 +199,15 @@ public class BufferManager {
         4) get next
         5) check
          */
+        /*
+        pointer show only already input data, last pointer show only page.data
+         */
 
         byte[] dataPage = page.getData();
         ArrayList<Integer> pointers = new ArrayList();
         pointers = page.getPointers();
         int currentPosition = page.lastPointer();
-        for(int i = 0;i < pointers.size(); ++i) {
+        for(int i = 0; i < pointers.size(); ++i) {
             if(pointers.get(i) == 2) {
                 pointers.set(i, page.lastPointer());
                 break;
@@ -199,7 +244,6 @@ public class BufferManager {
                     break;
 
             }
-            System.out.println("end of iteration");
             index++;
 
 
@@ -209,7 +253,6 @@ public class BufferManager {
         page.setPointers(pointers);
 
 
-        System.out.println(currentPosition);
 
         return page;
 
